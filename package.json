@@ -1,0 +1,13 @@
+{
+  "name": "secure-time-token",
+  "version": "1.0.2",
+  "description": "A lightweight package for generating and validating time-based secure tokens.",
+  "main": "index.js",
+  "type": "commonjs",
+  "keywords": ["token", "security", "HMAC", "TTL", "validation"],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "crypto": "^1.0.1"
+  }
+}
