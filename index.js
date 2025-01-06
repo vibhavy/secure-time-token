@@ -29,7 +29,10 @@ class ScureTimeToken {
         const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
         const expirationTime = currentTime + ttlInSeconds;
 
-        let payload = { exp: expirationTime };
+        let payload = { 
+            gen: currentTime,
+            exp: expirationTime 
+        };
         if (Object.keys(options).length > 0) {
             payload = { ...payload, ...options };
         }
