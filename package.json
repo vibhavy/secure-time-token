@@ -1,6 +1,6 @@
 {
   "name": "secure-time-token",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A lightweight package for generating and validating time-based secure tokens.",
   "main": "index.js",
   "type": "commonjs",

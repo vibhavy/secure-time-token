@@ -58,7 +58,7 @@ try {
 ## Example Workflow
 
 ```javascript
-const { generateToken, validateToken } = require('secure-time-token');
+const { generateToken, validateToken, getDecodedPayload } = require('secure-time-token');
 
 // Step 1: Generate a token
 const secretKey = 'your-secure-secret-key';
@@ -71,6 +71,10 @@ setTimeout(() => {
     try {
         const isValid = validateToken(token, secretKey);
         console.log('Token is valid:', isValid);
+
+        const decodedPayload = getDecodedPayload();
+        console.log('decoded payload:', decodedPayload);
+
     } catch (error) {
         console.error('Token validation failed:', error.message);
     }

@@ -1,63 +1,91 @@
 const crypto = require('crypto');
 
-/**
- * Generate a token with a specified TTL (in seconds).
- * The token contains a payload with expiration time and is signed using HMAC.
- * @param {number} ttlInSeconds - Time-to-live for the token in seconds.
- * @param {string} secretKey - Secret key used to sign the token.
- * @returns {string} Generated token.
- */
-function generateToken(ttlInSeconds, secretKey) {
-    const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-    const expirationTime = currentTime + ttlInSeconds;
+class ScureTimeToken {
+    constructor() {
+        if (ScureTimeToken.instance) {
+            return ScureTimeToken.instance; // Ensure singleton behavior
+        }
+        this.decodedPayload = null;
 
-    // Payload containing the expiration time
-    const payload = JSON.stringify({ exp: expirationTime });
-    const signature = crypto.createHmac('sha256', secretKey).update(payload).digest('hex');
+        // Bind methods to ensure `this` remains the class instance
+        this.generateToken = this.generateToken.bind(this);
+        this.validateToken = this.validateToken.bind(this);
+        this.getDecodedPayload = this.getDecodedPayload.bind(this);
 
-    // Combine payload and signature
-    const token = Buffer.from(payload).toString('base64') + '.' + signature;
+        ScureTimeToken.instance = this;
+    }
 
-    return token;
-}
+    /**
+     * Generate a token with a specified TTL (in seconds).
+     * The token contains a payload that includes an expiration time and optional additional data,
+     * signed using HMAC for integrity and security.
+     *
+     * @param {number} ttlInSeconds - Time-to-live for the token in seconds.
+     * @param {string} secretKey - Secret key used to sign the token.
+     * @param {object} options - Additional optional payload data to include in the token.
+     * @returns {string} A string representing the generated token.
+     */
+    generateToken(ttlInSeconds, secretKey, options = {}) {
+        const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+        const expirationTime = currentTime + ttlInSeconds;
 
-/**
- * Validate a token by verifying its signature and checking its expiration.
- * @param {string} token - Token to validate.
- * @param {string} secretKey - Secret key used to verify the token.
- * @returns {boolean} True if the token is valid.
- * @throws {Error} If the token is invalid or expired.
- */
-function validateToken(token, secretKey) {
-    try {
-        const [encodedPayload, signature] = token.split('.');
-
-        if (!encodedPayload || !signature) {
-            throw new Error('Invalid token format');
+        let payload = { exp: expirationTime };
+        if (Object.keys(options).length > 0) {
+            payload = { ...payload, ...options };
         }
 
-        const decodedPayload = Buffer.from(encodedPayload, 'base64').toString('utf8');
+        const strPayload = JSON.stringify(payload);
+        const signature = crypto.createHmac('sha256', secretKey).update(strPayload).digest('hex');
+        const token = Buffer.from(strPayload).toString('base64') + '.' + signature;
 
-        // Decode the payload
-        const payload = JSON.parse(decodedPayload);
+        return token;
+    }
 
-        // Recalculate the signature
-        const expectedSignature = crypto.createHmac('sha256', secretKey).update(decodedPayload).digest('hex');
+    /**
+     * Validate a token by verifying its HMAC signature and checking if it has expired.
+     * If the token is valid, the payload is stored in the class instance for further use.
+     *
+     * @param {string} token - The token to validate, in the format "payload.signature".
+     * @param {string} secretKey - Secret key used to verify the token's HMAC signature.
+     * @returns {boolean} Returns true if the token is valid.
+     * @throws {Error} Throws an error if the token format is invalid, the signature is incorrect, or the token has expired.
+     */
+    validateToken(token, secretKey) {
+        try {
+            const [encodedPayload, signature] = token.split('.');
+            if (!encodedPayload || !signature) {
+                throw new Error('Invalid token format');
+            }
 
-        if (signature !== expectedSignature) {
-            throw new Error('Invalid token signature');
+            const decodedPayload = Buffer.from(encodedPayload, 'base64').toString('utf8');
+            const payload = JSON.parse(decodedPayload);
+            const expectedSignature = crypto.createHmac('sha256', secretKey).update(decodedPayload).digest('hex');
+
+            if (signature !== expectedSignature) {
+                throw new Error('Invalid token signature');
+            }
+
+            const currentTimestamp = Math.floor(Date.now() / 1000);
+            if (currentTimestamp > payload.exp) {
+                throw new Error('Token has expired');
+            }
+
+            this.decodedPayload = payload;
+            return true;
+        } catch (error) {
+            throw error;
         }
+    }
 
-        // Check token expiration
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (currentTimestamp > payload.exp) {
-            throw new Error('Token has expired');
-        }
-
-        return true; // Token is valid
-    } catch (error) {
-        throw error;
+    /**
+     * Retrieve the most recently decoded payload from the last validated token.
+     *
+     * @returns {object|null} The payload object of the last validated token, or null if no token has been validated yet.
+     */
+    getDecodedPayload() {
+        return this.decodedPayload;
     }
 }
 
-module.exports = { generateToken, validateToken };
+// Export a single instance of the ScureTimeToken class (singleton pattern)
+module.exports = new ScureTimeToken();
